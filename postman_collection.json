@@ -1,0 +1,549 @@
+{
+  "info": {
+    "name": "InkBattle API - Complete Collection",
+    "description": "Complete API collection for InkBattle multiplayer drawing game with all endpoints",
+    "_postman_id": "inkbattle-complete-v1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Signup (Google)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('token', jsonData.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"google\",\n  \"providerId\": \"google_user_123456\",\n  \"name\": \"John Doe\",\n  \"avatar\": \"https://example.com/avatar.jpg\",\n  \"language\": \"en\",\n  \"country\": \"US\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signup"]
+            },
+            "description": "Sign up with Google OAuth. Returns JWT token, user object, and stores token in database. Awards 200 coins for registered users. Token expires in 30 days."
+          }
+        },
+        {
+          "name": "Signup (Facebook)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('token', jsonData.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"facebook\",\n  \"providerId\": \"facebook_user_789012\",\n  \"name\": \"Jane Smith\",\n  \"avatar\": \"https://example.com/avatar2.jpg\",\n  \"language\": \"es\",\n  \"country\": \"MX\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signup"]
+            },
+            "description": "Sign up with Facebook OAuth. Returns JWT token, user object, and stores token in database. Awards 200 coins for registered users."
+          }
+        },
+        {
+          "name": "Signup (Guest)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('token', jsonData.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"guest\",\n  \"name\": \"Guest User\",\n  \"avatar\": \"https://example.com/guest-avatar.jpg\",\n  \"language\": \"en\",\n  \"country\": \"US\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signup"]
+            },
+            "description": "Sign up as guest user. Returns JWT token and user object. Awards 20 coins for guest users. No providerId stored for guests."
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"avatar\": \"https://example.com/new-avatar.jpg\",\n  \"language\": \"es\",\n  \"country\": \"MX\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/updateProfile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "updateProfile"]
+            },
+            "description": "Update user profile information. All fields are optional - only provided fields will be updated."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Logout and revoke the current token. Marks token as deleted in database."
+          }
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "me"]
+            },
+            "description": "Get current user profile with coins balance."
+          }
+        },
+        {
+          "name": "Add Coins (Manual)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100,\n  \"reason\": \"daily_bonus\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/add-coins",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "add-coins"]
+            },
+            "description": "Manually add coins to user account (for testing/admin)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rooms",
+      "item": [
+        {
+          "name": "Create Room (Multiplayer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Fun Room\",\n  \"language\": \"EN\",\n  \"script\": \"All\",\n  \"country\": \"India\",\n  \"pointsTarget\": 250,\n  \"category\": \"Fruits\",\n  \"gamePlay\": \"1 vs 1\",\n  \"voiceEnabled\": true,\n  \"isPublic\": true,\n  \"maxPlayers\": 15\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "create"]
+            },
+            "description": "Create a new multiplayer room with custom settings."
+          }
+        },
+        {
+          "name": "Create Team vs Team Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Team Battle\",\n  \"language\": \"EN\",\n  \"category\": \"Animals\",\n  \"pointsTarget\": 400,\n  \"voiceEnabled\": true,\n  \"isPublic\": true,\n  \"team\": \"A\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/create-team",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "create-team"]
+            },
+            "description": "Create a team vs team room. Max 8 players (4v4)."
+          }
+        },
+        {
+          "name": "Random Join",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"EN\",\n  \"script\": \"All\",\n  \"country\": \"All\",\n  \"pointsTarget\": 120,\n  \"category\": \"Fruits\",\n  \"gamePlay\": \"1 vs 1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/random-join",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "random-join"]
+            },
+            "description": "Find and join a random public room matching preferences. Creates new room if no match found."
+          }
+        },
+        {
+          "name": "Join Room by Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"ABC12\",\n  \"team\": \"A\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/join",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "join"]
+            },
+            "description": "Join a room using 5-character room code. Optional team selection for team mode."
+          }
+        },
+        {
+          "name": "List Public Rooms",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/list?category=Fruits&language=EN&roomType=multiplayer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", "list"],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "Fruits"
+                },
+                {
+                  "key": "language",
+                  "value": "EN"
+                },
+                {
+                  "key": "roomType",
+                  "value": "multiplayer"
+                }
+              ]
+            },
+            "description": "List all public rooms with optional filters."
+          }
+        },
+        {
+          "name": "Get Room Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/:roomId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", ":roomId"],
+              "variable": [
+                {
+                  "key": "roomId",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Get detailed information about a specific room."
+          }
+        },
+        {
+          "name": "Leave Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/rooms/:roomId/leave",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rooms", ":roomId", "leave"],
+              "variable": [
+                {
+                  "key": "roomId",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Leave a room you're currently in."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Words Management",
+      "item": [
+        {
+          "name": "Get Word Schema",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/words/schema",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "words", "schema"]
+            },
+            "description": "Returns available languages, themes, and an example object of how to send payload for /add-words."
+          }
+        },
+        {
+          "name": "Add Words",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"words\": [\n    {\n      \"theme\": \"Animals\",\n      \"English\": \"Lion\",\n      \"Hindi\": \"शेर\",\n      \"Marathi\": \"सिंह\",\n      \"Spanish\": \"León\"\n    },\n    {\n      \"theme\": \"Fruits\",\n      \"English\": \"Apple\",\n      \"Hindi\": \"सेब\",\n      \"Marathi\": \"सफरचंद\",\n      \"Spanish\": \"Manzana\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/words/add-words",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "words", "add-words"]
+            },
+            "description": "Add multilingual words for multiple themes. Automatically maps languages existing in the DB. If no languages exist, only English is used."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Themes & Words",
+      "item": [
+        {
+          "name": "List All Themes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/themes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "themes"]
+            },
+            "description": "Get all themes with their words."
+          }
+        },
+        {
+          "name": "Create Theme",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Bollywood Movies\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/themes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "themes"]
+            },
+            "description": "Create a new theme category."
+          }
+        },
+        {
+          "name": "Add Word to Theme",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Sholay\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/themes/:themeId/words",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "themes", ":themeId", "words"],
+              "variable": [
+                {
+                  "key": "themeId",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Add a new word to an existing theme."
+          }
+        },
+        {
+          "name": "Get Random Word from Theme",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/themes/:themeId/random",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "themes", ":themeId", "random"],
+              "variable": [
+                {
+                  "key": "themeId",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Get a random word from a specific theme."
+          }
+        }
+      ]
+    }
+  ]
+}
