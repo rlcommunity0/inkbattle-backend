@@ -19,15 +19,14 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }} 
           script: |
             if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-              echo "Deploying to Production..."
               cd ~/inkbattle-backend
-              git pull origin main
+              # Use the GITHUB_TOKEN to bypass the SSH key conflict
+              git pull https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/rlcommunity0/inkbattle-backend.git main
               npm install --production
               pm2 restart inkbattle-backend
             elif [ "${{ github.ref }}" == "refs/heads/staging" ]; then
-              echo "Deploying to Staging..."
               cd ~/inkbattle-backend_staging
-              git pull origin staging
+              git pull https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/rlcommunity0/inkbattle-backend.git staging
               npm install
               pm2 restart inkbattle-staging
             fi
