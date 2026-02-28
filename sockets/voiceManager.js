@@ -1,3 +1,70 @@
+/**
+ * Voice (mediasoup) manager. Loads mediasoup only when VOICE_ENABLED=true.
+ * When disabled, exports a no-op stub so socket handlers don't crash and clients get clear errors.
+ */
+require('dotenv').config();
+
+const VOICE_ENABLED = process.env.VOICE_ENABLED === 'true';
+
+// Stub when voice is disabled: same interface, no mediasoup loaded, no RAM used
+const voiceManagerStub = {
+  async init() {},
+  async join() {
+    return null;
+  },
+  async connectTransport() {
+    return null;
+  },
+  _buildConsumerAnswerSdp() {
+    return '';
+  },
+  getConsumerByProducerId() {
+    return null;
+  },
+  getConsumer() {
+    return null;
+  },
+  getRouter() {
+    return null;
+  },
+  getRoom() {
+    return null;
+  },
+  getProducerBySocketId() {
+    return null;
+  },
+  async createTransport() {
+    return { transport: null, params: {} };
+  },
+  addTransport() {},
+  getTransport() {
+    return null;
+  },
+  addProducer() {
+    return null;
+  },
+  getProducer() {
+    return null;
+  },
+  getProducers() {
+    return [];
+  },
+  addConsumer() {},
+  getOtherSocketIds() {
+    return [];
+  },
+  handleDisconnect() {
+    return { roomId: null, userId: null, producerId: null };
+  },
+};
+
+if (!VOICE_ENABLED) {
+  console.log('Voice (mediasoup) disabled. Set VOICE_ENABLED=true in .env to enable.');
+  module.exports = voiceManagerStub;
+  return;
+}
+
+// --- Voice enabled: load mediasoup and real implementation ---
 const mediasoup = require('mediasoup');
 
 let workers = [];
@@ -37,114 +104,111 @@ const voiceManager = {
       workers.push(await createWorker());
     }
   },
-async connectTransport(socketId, dtlsParameters) {
-  const transport = this.getTransport(socketId);
-  if (!transport) {
-    console.warn(`❌ No transport found for socket ${socketId}`);
-    return null;
-  }
+  async connectTransport(socketId, dtlsParameters) {
+    const transport = this.getTransport(socketId);
+    if (!transport) {
+      console.warn(`❌ No transport found for socket ${socketId}`);
+      return null;
+    }
 
-  // Prevent reconnecting an already-connected transport
-  if (transport._connected) {
-    console.log(`⚠️ Transport for socket ${socketId} already connected`);
-    return transport;
-  }
+    if (transport._connected) {
+      console.log(`⚠️ Transport for socket ${socketId} already connected`);
+      return transport;
+    }
 
-  try {
-    await transport.connect({ dtlsParameters });
-    transport._connected = true;
-    console.log(`✅ Mediasoup transport connected for socket ${socketId}`);
-    return transport;
-  } catch (err) {
-    console.error(`❌ Failed to connect transport for socket ${socketId}:`, err);
-    return null;
-  }
-},
+    try {
+      await transport.connect({ dtlsParameters });
+      transport._connected = true;
+      console.log(`✅ Mediasoup transport connected for socket ${socketId}`);
+      return transport;
+    } catch (err) {
+      console.error(`❌ Failed to connect transport for socket ${socketId}:`, err);
+      return null;
+    }
+  },
 
   async join(socketId, roomId) {
-  if (!rooms.has(roomId)) {
-    const worker = workers[Math.floor(Math.random() * workers.length)];
-    const router = await worker.createRouter({ mediaCodecs });
-    rooms.set(roomId, { router, sockets: new Set([socketId]) });
+    if (!rooms.has(roomId)) {
+      const worker = workers[Math.floor(Math.random() * workers.length)];
+      const router = await worker.createRouter({ mediaCodecs });
+      rooms.set(roomId, { router, sockets: new Set([socketId]) });
 
-    console.log(
-      `✅ Room ${roomId} created and socket ${socketId} joined. Total rooms: ${rooms.size}`
-    );
-  } else {
-    rooms.get(roomId).sockets.add(socketId);
-    console.log(`➡️ Socket ${socketId} joined existing room ${roomId}`);
-  }
- 
-  return rooms.get(roomId).router;
-},
-_buildConsumerAnswerSdp({ router, consumer, offer }) {
-  const sdpTransform = require('sdp-transform');
-  const answer = {
-    version: 0,
-    origin: {
-      username: '-',
-      sessionId: Date.now(),
-      sessionVersion: 2,
-      netType: 'IN',
-      addrType: 'IP4',
-      unicastAddress: '127.0.0.1'
-    },
-    name: '-',
-    timing: { start: 0, stop: 0 },
-    groups: [{ type: 'BUNDLE', mids: '0' }],
-    media: []
-  };
+      console.log(
+        `✅ Room ${roomId} created and socket ${socketId} joined. Total rooms: ${rooms.size}`
+      );
+    } else {
+      rooms.get(roomId).sockets.add(socketId);
+      console.log(`➡️ Socket ${socketId} joined existing room ${roomId}`);
+    }
 
-  const codec = consumer.rtpParameters.codecs[0];
-  const m = {
-    type: 'audio',
-    port: 9,
-    protocol: 'UDP/TLS/RTP/SAVPF',
-    payloads: codec.payloadType.toString(),
-    connection: { version: 4, ip: '0.0.0.0' },
-    direction: 'sendonly',
-    rtp: [
-      {
+    return rooms.get(roomId).router;
+  },
+
+  _buildConsumerAnswerSdp({ router, consumer, offer }) {
+    const sdpTransform = require('sdp-transform');
+    const answer = {
+      version: 0,
+      origin: {
+        username: '-',
+        sessionId: Date.now(),
+        sessionVersion: 2,
+        netType: 'IN',
+        addrType: 'IP4',
+        unicastAddress: '127.0.0.1'
+      },
+      name: '-',
+      timing: { start: 0, stop: 0 },
+      groups: [{ type: 'BUNDLE', mids: '0' }],
+      media: []
+    };
+
+    const codec = consumer.rtpParameters.codecs[0];
+    const m = {
+      type: 'audio',
+      port: 9,
+      protocol: 'UDP/TLS/RTP/SAVPF',
+      payloads: codec.payloadType.toString(),
+      connection: { version: 4, ip: '0.0.0.0' },
+      direction: 'sendonly',
+      rtp: [
+        {
+          payload: codec.payloadType,
+          codec: codec.mimeType.split('/')[1],
+          rate: codec.clockRate,
+          encoding: codec.channels > 1 ? codec.channels : undefined
+        }
+      ],
+      fmtp: codec.parameters
+        ? [{ payload: codec.payloadType, config: Object.entries(codec.parameters).map(([k, v]) => `${k}=${v}`).join(';') }]
+        : [],
+      rtcpFb: codec.rtcpFeedback?.map(fb => ({
         payload: codec.payloadType,
-        codec: codec.mimeType.split('/')[1],
-        rate: codec.clockRate,
-        encoding: codec.channels > 1 ? codec.channels : undefined
-      }
-    ],
-    fmtp: codec.parameters
-      ? [{ payload: codec.payloadType, config: Object.entries(codec.parameters).map(([k, v]) => `${k}=${v}`).join(';') }]
-      : [],
-    rtcpFb: codec.rtcpFeedback?.map(fb => ({
-      payload: codec.payloadType,
-      type: fb.type,
-      subtype: fb.parameter || undefined
-    })) || [],
-    candidates: [],
-    iceUfrag: offer.media[0].iceUfrag || 'ufrag',
-    icePwd: offer.media[0].icePwd,
-    fingerprint: offer.media[0].fingerprint,
-    setup: 'passive',
-    mid: '0',
-    ssrcs: [
-      {
-        id: consumer.rtpParameters.encodings[0].ssrc,
-        attribute: 'cname',
-        value: consumer.rtpParameters.rtcp.cname,
-      }
-    ]
-  };
+        type: fb.type,
+        subtype: fb.parameter || undefined
+      })) || [],
+      candidates: [],
+      iceUfrag: offer.media[0].iceUfrag || 'ufrag',
+      icePwd: offer.media[0].icePwd,
+      fingerprint: offer.media[0].fingerprint,
+      setup: 'passive',
+      mid: '0',
+      ssrcs: [
+        {
+          id: consumer.rtpParameters.encodings[0].ssrc,
+          attribute: 'cname',
+          value: consumer.rtpParameters.rtcp.cname,
+        }
+      ]
+    };
 
-  // ✅ ADD THESE TWO LINES ↓↓↓
-  m.rtcpMux = 'rtcp-mux';
-  m.rtcpRsize = 'rtcp-rsize';
+    m.rtcpMux = 'rtcp-mux';
+    m.rtcpRsize = 'rtcp-rsize';
 
-  m.rtcpMux = 'rtcp-mux';
-  m.rtcpRsize = 'rtcp-rsize';
+    answer.media.push(m);
+    return sdpTransform.write(answer);
+  },
 
-  answer.media.push(m);
-  return sdpTransform.write(answer);
-},
-getConsumerByProducerId(socketId, producerId) {
+  getConsumerByProducerId(socketId, producerId) {
     if (consumers.has(socketId)) {
       for (const consumer of consumers.get(socketId)) {
         if (consumer.producerId === producerId) {
@@ -164,26 +228,22 @@ getConsumerByProducerId(socketId, producerId) {
       }
     }
     return null;
-  }
-
-
-,
+  },
 
   getRouter(roomId) {
     return rooms.has(roomId) ? rooms.get(roomId).router : null;
   },
 
   getRoom(socket) {
-  const roomId = socket.data?.roomId || socket.roomId;
-  if (!roomId) return null;
-  return rooms.get(roomId);
-},
-getProducerBySocketId(socketId) {
-  return producers.get(socketId) || null;
-},
+    const roomId = socket.data?.roomId || socket.roomId;
+    if (!roomId) return null;
+    return rooms.get(roomId);
+  },
 
+  getProducerBySocketId(socketId) {
+    return producers.get(socketId) || null;
+  },
 
-  
   async createTransport(router) {
     const transport = await router.createWebRtcTransport({
       listenIps: [{ ip: '0.0.0.0', announcedIp: process.env.MEDIASOUP_ANNOUNCED_IP || '192.168.1.2' }],
@@ -223,7 +283,7 @@ getProducerBySocketId(socketId) {
     }
     return null;
   },
-  
+
   getProducers(roomId, excludeSocketId) {
     const producerList = [];
     if (rooms.has(roomId)) {
@@ -245,17 +305,6 @@ getProducerBySocketId(socketId) {
     consumers.get(socketId).add(consumer);
   },
 
-  getConsumer(socketId, consumerId) {
-    if (consumers.has(socketId)) {
-      for (const consumer of consumers.get(socketId)) {
-        if (consumer.id === consumerId) {
-          return consumer;
-        }
-      }
-    }
-    return null;
-  },
-
   getOtherSocketIds(socketId, roomId) {
     if (rooms.has(roomId)) {
       return [...rooms.get(roomId).sockets].filter(id => id !== socketId);
@@ -268,7 +317,6 @@ getProducerBySocketId(socketId) {
     let userId = null;
     let producerId = null;
 
-    // Find room
     for (const [key, room] of rooms.entries()) {
       if (room.sockets.has(socketId)) {
         roomId = key;
@@ -280,14 +328,12 @@ getProducerBySocketId(socketId) {
       }
     }
 
-    // Close transport
     const transport = transports.get(socketId);
     if (transport) {
       transport.close();
       transports.delete(socketId);
     }
 
-    // Close producer
     const producer = producers.get(socketId);
     if (producer) {
       userId = producer.appData.userId;
@@ -296,7 +342,6 @@ getProducerBySocketId(socketId) {
       producers.delete(socketId);
     }
 
-    // Close consumers
     const consumerSet = consumers.get(socketId);
     if (consumerSet) {
       for (const consumer of consumerSet) {
@@ -304,7 +349,7 @@ getProducerBySocketId(socketId) {
       }
       consumers.delete(socketId);
     }
-    
+
     return { roomId, userId, producerId };
   }
 };
