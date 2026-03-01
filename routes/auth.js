@@ -1,8 +1,35 @@
 const express = require("express");
 const router = express.Router();
+const { Op } = require("sequelize");
 const { User, CoinTransaction, Token } = require("../models");
 const { sign, authMiddleware } = require("../utils/auth");
 const { normalizeCountryCode } = require("../utils/countryCode");
+
+async function getOrCreateTokenForUser(userId) {
+  const now = new Date();
+  const existing = await Token.findOne({
+    where: { userId, isDeleted: false, expiresAt: { [Op.gt]: now } },
+    order: [["expiresAt", "DESC"]],
+  });
+  if (existing) return existing.token;
+  const token = sign(userId);
+  try {
+    await Token.create({
+      userId,
+      token,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
+    return token;
+  } catch (e) {
+    if (e.name === "SequelizeUniqueConstraintError" && (e.fields?.token || e.errors?.some((x) => x.path === "token"))) {
+      const again = await Token.findOne({
+        where: { userId, isDeleted: false, expiresAt: { [Op.gt]: now } },
+      });
+      if (again) return again.token;
+    }
+    throw e;
+  }
+}
 
 const coinsForRegisteredUsers = 1000;
 const coinsForGuestUsers = 1000;
@@ -59,24 +86,18 @@ router.post("/signup", async (req, res) => {
       }
     }
 
-    const token = sign(user.id);
-    await Token.create({
-      userId: user.id,
-      token,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    });
+    const token = await getOrCreateTokenForUser(user.id);
     res.json({ userId: user.id, token, isNew });
   } catch (err) {
     if (err.name === "SequelizeUniqueConstraintError" && provider === "guest" && effectiveProviderId) {
       const existingUser = await User.findOne({ where: { provider, providerId: effectiveProviderId } });
       if (existingUser) {
-        const token = sign(existingUser.id);
-        await Token.create({
-          userId: existingUser.id,
-          token,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        });
-        return res.json({ userId: existingUser.id, token, isNew: false });
+        try {
+          const token = await getOrCreateTokenForUser(existingUser.id);
+          return res.json({ userId: existingUser.id, token, isNew: false });
+        } catch (tokenErr) {
+          console.error("getOrCreateTokenForUser failed:", tokenErr);
+        }
       }
     }
     console.error(err);
