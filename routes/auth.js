@@ -68,6 +68,18 @@ router.post("/signup", async (req, res) => {
     });
     res.json({ userId: user.id, token, isNew });
   } catch (err) {
+    if (err.name === "SequelizeUniqueConstraintError" && provider === "guest" && effectiveProviderId) {
+      const existingUser = await User.findOne({ where: { provider, providerId: effectiveProviderId } });
+      if (existingUser) {
+        const token = sign(existingUser.id);
+        await Token.create({
+          userId: existingUser.id,
+          token,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        });
+        return res.json({ userId: existingUser.id, token, isNew: false });
+      }
+    }
     console.error(err);
     res.status(500).json({ error: "server_error" });
   }
