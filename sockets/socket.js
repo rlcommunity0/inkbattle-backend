@@ -646,6 +646,50 @@ module.exports = function (io) {
 				socket.emit("error", { message: "join_room_failed" });
 			}
 		});
+
+		// Client-initiated canvas request (e.g. guesser resume when socket stayed connected and did not re-join).
+		// Server asks the drawer to send canvas; drawer replies via send_canvas_data and server forwards canvas_resume to requester.
+		socket.on("request_canvas_data", async ({ roomCode }) => {
+			try {
+				if (!roomCode) return socket.emit("error", { message: "room_code_required" });
+				if (!socket.user?.id) return socket.emit("error", { message: "not_authenticated" });
+
+				const room = await getRoomByCode(roomCode);
+				if (!room) return socket.emit("error", { message: "room_not_found" });
+				if (room.status !== "playing" || room.roundPhase !== "drawing") return;
+
+				const participant = await RoomParticipant.findOne({
+					where: { roomId: room.id, userId: socket.user.id, isActive: true },
+				});
+				if (!participant) return;
+
+				const currentDrawerId = room.currentDrawerId;
+				const drawerSocketId = socket.user.id === currentDrawerId
+					? socket.id
+					: getSocketIdForUser(currentDrawerId);
+				if (!drawerSocketId) {
+					console.warn(
+						`[request_canvas_data] Room ${room.code} is drawing but drawer socket not found for user ${currentDrawerId}`,
+					);
+					return;
+				}
+
+				socket.isResyncing = true;
+				socket.resyncRoomId = room.id;
+				io.to(drawerSocketId).emit("request_canvas_data", {
+					roomCode: room.code,
+					targetSocketId: socket.id,
+					targetUserId: socket.user.id,
+				});
+				console.log(
+					`📡 Client requested canvas for room ${room.code} → drawer (${currentDrawerId}), target user ${socket.user.name || socket.user.id}`,
+				);
+			} catch (e) {
+				console.error("request_canvas_data error:", e);
+				socket.emit("error", { message: "request_canvas_data_failed" });
+			}
+		});
+
 		// Resume Feature
 		socket.on(
 			"send_canvas_data",
