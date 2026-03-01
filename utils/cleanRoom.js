@@ -29,7 +29,7 @@ async function deleteRoom(io, room) {
       s.roomCode = null;
     }
 
-    // 4. Remove participants and room
+    // 4. Remove room (Room.beforeDestroy hook deletes Report, Message, RoomParticipant)
     await RoomParticipant.destroy({ where: { roomId: room.id } });
     await room.destroy();
 
@@ -63,4 +63,3 @@ async function checkAndMaybeDeleteRoom(io, roomId) {
 }
 
 module.exports = { deleteRoom, checkAndMaybeDeleteRoom };
-

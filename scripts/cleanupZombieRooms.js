@@ -4,6 +4,7 @@ require("dotenv").config({
 });
 
 const { Room, RoomParticipant, sequelize } = require("../models");
+// Room.beforeDestroy hook in models/room.js deletes Report, Message, RoomParticipant for this room
 const { Op } = require("sequelize");
 const { clearRoomTimer } = require("../sockets/roundPhases");
 
@@ -17,12 +18,6 @@ async function deleteRoomWithRetry(room) {
       await sequelize.transaction(async (t) => {
         clearRoomTimer(`${room.code}_phase`);
         clearRoomTimer(`${room.code}_drawing`);
-
-        await RoomParticipant.destroy({
-          where: { roomId: room.id },
-          transaction: t,
-        });
-
         await room.destroy({ transaction: t });
       });
 
@@ -94,4 +89,3 @@ async function deleteRoomWithRetry(room) {
     process.exit(1);
   }
 })();
-

@@ -33,7 +33,7 @@ module.exports = (sequelize, DataTypes) => {
     // Entry and rewards system
     entryPoints: { type: DataTypes.INTEGER, defaultValue: 250 }, // 100, 250, 500
     targetPoints: { type: DataTypes.INTEGER, defaultValue: 100 }, // Points needed to win
-    maxPointsPerRound: { type: DataTypes.INTEGER, defaultValue: 20 }, // Max points per round
+    maxPointsPerRound: { type: DataTypes.INTEGER, defaultValue: 20 }, // Max points drawer can earn per round (min(guessedCount*2, this))
     
     maxPlayers: { type: DataTypes.INTEGER, defaultValue: 5 }, // Default 5, can be incremented up to 15 in lobby
     voiceEnabled: { type: DataTypes.BOOLEAN, defaultValue: false },
@@ -83,12 +83,21 @@ module.exports = (sequelize, DataTypes) => {
         this.setDataValue('drawnUserIds', Array.isArray(val) ? val : []);
       },
     }
-  }, { 
+  }, {
     tableName: 'rooms',
     indexes: [
       { unique: true, fields: ['code'] }
     ]
-  },);
+  });
+
+  Room.beforeDestroy(async (room, options) => {
+    const { Report, Message, RoomParticipant } = room.sequelize.models;
+    const transaction = options.transaction || null;
+    const opts = transaction ? { transaction } : {};
+    await Report.destroy({ where: { roomId: room.id }, ...opts });
+    await Message.destroy({ where: { roomId: room.id }, ...opts });
+    await RoomParticipant.destroy({ where: { roomId: room.id }, ...opts });
+  });
 
   return Room;
 };
