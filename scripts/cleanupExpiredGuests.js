@@ -15,10 +15,10 @@ require("dotenv").config({
   path: require("path").resolve(__dirname, "../.env"),
 });
 
-const { User, Token, RoomParticipant, CoinTransaction, sequelize } = require("../models");
+const { User, Token, RoomParticipant, CoinTransaction, Message, Room, sequelize } = require("../models");
 const { Op } = require("sequelize");
 
-const DRY_RUN = false;
+const DRY_RUN = process.env.CLEANUP_GUESTS_DRY_RUN === "1";
 
 (async () => {
   try {
@@ -55,7 +55,9 @@ const DRY_RUN = false;
     await sequelize.transaction(async (t) => {
       await Token.destroy({ where: { userId: { [Op.in]: ids } }, transaction: t });
       await RoomParticipant.destroy({ where: { userId: { [Op.in]: ids } }, transaction: t });
+      await Message.destroy({ where: { userId: { [Op.in]: ids } }, transaction: t });
       await CoinTransaction.destroy({ where: { userId: { [Op.in]: ids } }, transaction: t });
+      await Room.update({ ownerId: null }, { where: { ownerId: { [Op.in]: ids } }, transaction: t });
       await User.destroy({ where: { id: { [Op.in]: ids } }, transaction: t });
     });
 

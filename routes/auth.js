@@ -13,9 +13,8 @@ router.post("/signup", async (req, res) => {
   const { provider, providerId, name, avatar, language, country } = req.body;
   if (!provider || !providerId)
     return res.status(400).json({ error: "provider & providerId required" });
+  const effectiveProviderId = provider === "guest" ? (providerId || `guest_${Date.now()}`) : providerId;
   try {
-    // Guest: providerId is required (stable client-generated id for find-or-create). Non-guest: provider+providerId.
-    const effectiveProviderId = provider === "guest" ? (providerId || `guest_${Date.now()}`) : providerId;
     let user = await User.findOne({ where: { provider, providerId: effectiveProviderId } });
     let isNew = false;
     if (!user) {
