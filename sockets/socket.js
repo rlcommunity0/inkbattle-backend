@@ -174,6 +174,12 @@ module.exports = function (io) {
 				return next();
 			}
 
+			// Refresh guest TTL on socket connection (activity = 1 day from now)
+			if (user.provider === "guest" && user.guestExpiresAt !== undefined) {
+				const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+				user.update({ guestExpiresAt: oneDayFromNow }).catch(() => {});
+			}
+
 			console.log("✅ Authenticated socket:", user.name);
 
 			socket.user = user;
