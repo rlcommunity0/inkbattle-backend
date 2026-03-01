@@ -18,43 +18,21 @@ function verify(token) {
 
 async function authMiddleware(req, res, next) {
   const h = req.headers.authorization;
-  if (!h)
+  if (!h) {
     return res.status(401).json({ error: "Missing Authorization header" });
-
-  const parts = h.split(" ");
-  if (parts.length !== 2)
-    return res.status(401).json({ error: "const jwt = require("jsonwebtoken");
-require("dotenv").config();
-const secret = process.env.JWT_SECRET || "change_this_secret";
-const { Token, User } = require("../models");
-
-function sign(userId) {
-  return jwt.sign({ id: userId }, secret, { expiresIn: "30d" });
-}
-
-function verify(token) {
-  try {
-    console.log(jwt.verify(token, secret));
-    return jwt.verify(token, secret);
-  } catch (e) {
-    return null;
   }
-}
-
-async function authMiddleware(req, res, next) {
-  const h = req.headers.authorization;
-  if (!h)
-    return res.status(401).json({ error: "Missing Authorization header" });
 
   const parts = h.split(" ");
-  if (parts.length !== 2)
+  if (parts.length !== 2) {
     return res.status(401).json({ error: "Invalid Authorization header" });
+  }
 
   const tokenString = parts[1];
   const payload = verify(tokenString);
-  if (!payload) return res.status(401).json({ error: "Invalid token" });
+  if (!payload) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
 
-  // Validate token exists in database and is not deleted/expired
   const dbToken = await Token.findOne({
     where: {
       token: tokenString,
@@ -67,15 +45,14 @@ async function authMiddleware(req, res, next) {
     return res.status(401).json({ error: "Token not found or revoked" });
   }
 
-  // Check if token is expired
   if (new Date() > new Date(dbToken.expiresAt)) {
     return res.status(401).json({ error: "Token expired" });
   }
+
   let user = await User.findByPk(payload.id);
   req.user = user;
   req.token = tokenString;
 
-  // Refresh guest TTL on any authenticated request (delete only after 1 day inactive)
   if (user && user.provider === "guest" && user.guestExpiresAt !== undefined) {
     const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await user.update({ guestExpiresAt: oneDayFromNow }).catch(() => {});
