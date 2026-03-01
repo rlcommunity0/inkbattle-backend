@@ -14,19 +14,24 @@ router.post("/signup", async (req, res) => {
   if (!provider || !providerId)
     return res.status(400).json({ error: "provider & providerId required" });
   try {
-    let user = await User.findOne({ where: { provider, providerId } });
+    // Guest: providerId is required (stable client-generated id for find-or-create). Non-guest: provider+providerId.
+    const effectiveProviderId = provider === "guest" ? (providerId || `guest_${Date.now()}`) : providerId;
+    let user = await User.findOne({ where: { provider, providerId: effectiveProviderId } });
     let isNew = false;
     if (!user) {
       if (provider === "guest") {
         // Normalize country to ISO-2 code (supports backward compatibility)
         const normalizedCountry = country ? normalizeCountryCode(country) : null;
+        const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
         user = await User.create({
           provider,
+          providerId: effectiveProviderId,
           name,
           avatar,
           coins: coinsForGuestUsers,
           language,
           country: normalizedCountry,
+          guestExpiresAt: oneDayFromNow,
         });
         isNew = true;
         await CoinTransaction.create({

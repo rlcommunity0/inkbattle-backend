@@ -11,12 +11,14 @@ module.exports = (sequelize, DataTypes) => {
     language: { type: DataTypes.STRING, allowNull: true },
     country: { type: DataTypes.STRING, allowNull: true },
     lastLoginDate: { type: DataTypes.DATE, allowNull: true }, // Track daily login bonus
-    dailyLoginStreak: { type: DataTypes.INTEGER, defaultValue: 0 } // Track consecutive logins
+    dailyLoginStreak: { type: DataTypes.INTEGER, defaultValue: 0 }, // Track consecutive logins
+    guestExpiresAt: { type: DataTypes.DATE, allowNull: true } // TTL for guest accounts; cron deletes where guestExpiresAt < NOW()
   }, { 
     tableName: 'users',
     indexes: [
       { unique: true, fields: ['provider', 'providerId'] },
-      { unique: true, fields: ['guestToken'] }
+      { unique: true, fields: ['guestToken'] },
+      { fields: ['provider', 'guestExpiresAt'] } // For cron: DELETE guests WHERE provider='guest' AND guestExpiresAt < NOW()
     ]
   });
   return User;
